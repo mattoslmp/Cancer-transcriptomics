@@ -4,7 +4,8 @@
 ## Step 1:
 
 **Getting Started**
-   - Bioconductor packages for instalation: frma, affy, cluster, impute, preprocessCore, WGCNA, GEOquery, simpleaffy, RColorBrewer, devtools,
+**Installation:**
+   - Bioconductor packages: frma, affy, cluster, impute, preprocessCore, WGCNA, GEOquery, simpleaffy, RColorBrewer, devtools,
      ggfortify, ggplot2, sva,limma, hgu133plus2.db.
  ```
  
