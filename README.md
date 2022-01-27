@@ -13,10 +13,10 @@
  biocLite(c("affy","affy", "cluster", "inpute", "preprocessCore", "GEOquery",  "WGCNA", "GEOquery", "simpleaffy", "RColorBrewer", "devtools",
      "ggfortify", "ggplot2", "sva","limma", "hgu133plus2.db"))
  ```
-   - Download the dataset for Gene Expression Omnibus (GEO) - This database stores curated gene expression DataSets.
+## Step 2: Download the dataset for Gene Expression Omnibus (GEO) - This database stores curated gene expression DataSets.
 --------------------------------------------------------------------------------
-## Step 2: Normalization, Bach removal  with Grafics Results
-## Step 3: Differential expression analysis by Samples comparison - Bioconductor packages.
-## Step 4: Graphics Results Generation
+## Step 3: Normalization, Bach removal  with Grafics Results
+## Step 4: Differential expression analysis by Samples comparison - Bioconductor packages.
+## Step 5: Graphics Results Generation
 
 README: Under construction.
