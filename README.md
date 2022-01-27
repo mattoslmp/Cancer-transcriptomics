@@ -5,7 +5,12 @@
 
 **Getting Started**
    - Bioconductor packages for instalation: frma, affy, cluster, impute, preprocessCore, WGCNA, GEOquery, simpleaffy, RColorBrewer, devtools,
-     ggfortify, ggplot2, sva,limma, hgu133plus2.db limma.
+     ggfortify, ggplot2, sva,limma, hgu133plus2.db.
+ ```
+ 
+ biocLite(c("affy","affy", "cluster", "inpute", "preprocessCore", "GEOquery",  "WGCNA", "GEOquery", "simpleaffy", "RColorBrewer", "devtools",
+     "ggfortify", "ggplot2", "sva","limma", "hgu133plus2.db"))
+ ```
    - Download the dataset for Gene Expression Omnibus (GEO) - This database stores curated gene expression DataSets.
 --------------------------------------------------------------------------------
 ## Step 2: Normalization, Bach removal  with Grafics Results
