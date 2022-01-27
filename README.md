@@ -1,6 +1,7 @@
 # Cancer-transcriptomics
 
-###  R scripts for Microarray Analysis of Cancer Cells Types from Public dataset from Gene Expression Omnibus (GEO)
+### Microarray Analysis of Cancer Cells Types 
+## Dataset obtained from Gene Expression Omnibus (GEO)
 ## Step 1:
 
 **Getting Started**
