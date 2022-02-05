@@ -15,7 +15,7 @@
  ```
 ## Step 2: Download the dataset for Gene Expression Omnibus (GEO) - This database stores curated gene expression DataSets.
 --------------------------------------------------------------------------------
-## Step 3: Normalization, Bach removal  with Grafics Results
+## Step 3: Normalization, Bach removal, Grafics Results
 ## Step 4: Differential expression analysis by Samples comparison - Bioconductor packages.
 ## Step 5: Graphics Results Generation
 
