@@ -1,3 +1,4 @@
+#Author: Leandro de Mattos Pereira
 # download the BioC installation routines
 source("http://bioconductor.org/biocLite.R")
 # install the core packages
