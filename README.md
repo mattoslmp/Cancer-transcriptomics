@@ -1,4 +1,5 @@
-Cancer-transcriptomics
+#Code author: Leandro de Mattos Pereira
+## Cancer-transcriptomics
 Array Data Analysis
 This repository contains scripts for analyzing array data using various R packages and Bioconductor tools. The analysis includes preprocessing steps such as background correction, normalization, batch effect removal, and differential expression analysis.
 
