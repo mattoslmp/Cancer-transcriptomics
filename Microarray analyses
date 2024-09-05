@@ -1,370 +1,141 @@
-#Author: Leandro de Mattos Pereira
-# download the BioC installation routines
-source("http://bioconductor.org/biocLite.R")
-# install the core packages
-#source("SampleNetwork_1.0.r")
-rm(list=ls())
-library("GEOquery")
-#biocLite("GEOquery")
-#biocLite(c("affy","hgu133plus2.db","WGCNA","clusters", "impute","preprocessCore"))
-#biocLite("hgu133plus2.db")
-#biocLite(c("hgu133plus2cdf","cluster"))
-#biocLite("frma")
-#biocLite("pd.hg.u133.plus.2")
+# Author: Leandro de Mattos Pereira
+# Please cite the author when using this code.
 
+# Clear all objects from the environment
+rm(list=ls())
+
+# Load required libraries
+library(GEOquery)
 library(frma)
 library(affy)
 library(cluster)
 library(impute)
 library(preprocessCore)
 library(WGCNA)
-library(GEOquery)
 library(simpleaffy)
 library(RColorBrewer)
-library(devtools)
 library(ggfortify)
 library(ggplot2)
 library(sva)
 library(limma)
 library(hgu133plus2.db)
-library(limma)
+
+# Set working directory
 setwd("/home/mattoslmp/datasets_arrays/SampleNetworkFiles")
+
+# Read CEL files and sample description
 celfiles <- read.affy(covdesc="phenodata.txt", path="/home/mattoslmp/datasets_arrays/data")
 
+# Plot initial boxplot and histogram
 cols <- brewer.pal(8, "Set1")
-boxplot(celfiles, col=cols)
-hist(celfiles, col=cols)
+boxplot(celfiles, col=cols, main="Boxplot before normalization")
+hist(celfiles, col=cols, main="Histogram before normalization")
 
-########################################################
-#### Retirando batch efeitos
-#edata = exprs(celfiles)
-#pheno = pData(celfiles)
-#samples <- celfiles$Target
-#samples <- as.factor(samples)
-## check factors have been assigned
+##########################
+# Normalization using FRMA
+celfiles.frma <- frma(celfiles, background="rma", normalize="quantile", summarize="robust_weighted_average", target="probeset")
 
+# Plot after normalization
+hist(celfiles.frma, col=cols, main="Histogram after normalization")
+boxplot(celfiles.frma, col=cols, main="Boxplot after normalization")
 
-### #Estimar o numero de fatores latentes
-#n.sv = num.sv(edata,design,method="leek")
-##svobj = sva(edata,mod,mod0,n.sv=n.sv)
-#batch = pheno$batch
-#batch=pheno$Batch
-#modcombat = model.matrix(~1, data=pheno)
-#combat_edata = ComBat(dat=edata, batch=batch, mod=NULL, par.prior=TRUE, prior.plots=TRUE)
-################# Normalizacao
-#celfiles.gcrma <- gcrma(celfiles)
-#celfiles.gcrma
-#library(affyPLM)
-#boxplot(celfiles.gcrma, col=cols)
-# load colour libraries
-#hist(celfiles.gcrma, col=cols)
-
-########################################################################################################
-#celfiles.rma <- rma(celfiles)
-#hist(celfiles.rma, col=cols)
-#boxplot(celfiles.rma, col=cols)
-##load colour libraries
-#hist(celfiles.rma, col=cols)
-
-##################################################
-####################### Normalizacao com fmra 
-library("frma")
-celfiles.frma <- frma(celfiles, background="rma", normalize="quantile",
-summarize="robust_weighted_average", target="probeset", input.vecs=NULL, output.param=NULL, verbose=FALSE)
-######################## Histograma apos a normalizacao
-hist(celfiles.frma, col=cols)
-######################## Boxplot apos a normalizacao
-boxplot(celfiles.frma, col=cols)
-edata = exprs(celfiles.frma)
-pheno = pData(celfiles.frma)
-batch=pheno$Batch
-
-colnames(pheno) = c("sample","FileName", "Target","Batch")
+# Extract normalized data
+edata <- exprs(celfiles.frma)
+pheno <- pData(celfiles.frma)
+colnames(pheno) <- c("sample", "FileName", "Target", "Batch")
 sample <- pheno$sample
 batch <- pheno$Batch
 condition <- as.factor(pheno$Target)
 pdata <- data.frame(sample, batch, condition)
 modmatrix <- model.matrix(~as.factor(condition), data=pdata)
-##############################################################################################################
 
-celfiles.frma.combat <- ComBat(dat=edata, batch=batch, mod=modmatrix,par.prior=TRUE, prior.plots=TRUE)
-combat_fit = lm.fit(modmatrix,t(edata))
-hist(combat_fit$coefficients[2,],col=2,breaks=100)
-plot(combat_fit$coefficients[2,],combat_fit$coefficients[2,],col=2,
-     xlab="Linear Model",ylab="Combat",xlim=c(-5,5),ylim=c(-5,5))
-abline(c(0,1),col=1,lwd=3)
-#########################################################################################################
+##########################
+# Remove batch effects using ComBat
+celfiles.frma.combat <- ComBat(dat=edata, batch=batch, mod=modmatrix, par.prior=TRUE, prior.plots=TRUE)
 
-
-################ Diagnostico plot: Clusterizar as amostras apos a normalizacao e bath remocao
-distance <- dist(t(celfiles.frma.combat),method="maximum")
+# Diagnostic: clustering after batch effect removal
+distance <- dist(t(celfiles.frma.combat), method="euclidean")
 clusters <- hclust(distance)
-plot(clusters)
+plot(clusters, main="Clustering after batch effect removal")
 
-#########################################################################################################
+# Final plots
+hist(celfiles.frma.combat, col=cols, main="Histogram after batch effect removal")
+boxplot(celfiles.frma.combat, col=cols, main="Boxplot after batch effect removal")
 
-
-hist(celfiles.frma.combat, col=cols)
-boxplot(celfiles.frma.combat, col=cols)
-
-########################################################################
-
-phenodata<-read.table("/home/mattoslmp/datasets_arrays/data/phenodata.txt",head=TRUE)
-phenodata <-phenodata[,1:3]
-phenodata <- data.frame(phenodata)
-
-rownames(phenodata) <-phenodata$FileName
-data.frame(phenodata)
-library("hgu133plus2.db")
-eset <- ExpressionSet(celfiles.frma.combat)
-
-celfiles.frma.combateset <-ExpressionSet(celfiles.frma.combat, phenoData = AnnotatedDataFrame(phenodata), annotation="hgu133plus2.db")
-
-##################### Histograma e boxplot antes da remocao de bath
-hist(celfiles.frma.combateset, col=cols)
-boxplot(celfiles.frma.combateset, col=cols)
-##################### Histograma e boxplot apos remocao de bath 
-### Diagnostico plot 
-distance <- dist(t(celfiles.frma.combat),method="euclidean")
-
-cols <- brewer.pal(8, "Set1")
-boxplot(celfiles.frma.combat, col=cols)
-hist(celfiles, col=cols)
-
-##he distance measure to be used. This must be one of "euclidean", "maximum", "manhattan", "canberra"
-clusters <- hclust(distance)
-plot(clusters)
-########################
-
-
-###################
-########## Filtrar genes com baixa variancia
-###celfiles.frma.combateset.filtered <- nsFiltcelfiles.frma.combater(celfiles.rma.combateset, require.entrez=FALSE, remove.dupEntrez=FALSE)
-#What got removed and why?
-#celfiles.frma.combateset.filtered$filter.log
-#boxplot(celfiles.frma.combateset.filtered$eset,col=cols)
-
-############################### Preparando para expressao diferencial
+##########################
+# Prepare for differential expression analysis
 samples <- celfiles.frma.combateset$Target
-
-
 samples <- as.factor(samples)
-# check factors have been assigned
 
-# set up the experimental design
+# Create experimental design
 design <- model.matrix(~0 + samples)
-colnames(design) <- c("samplesA172_Glioblastoma", "samplesA375_Melanoma", "samplesBT20_Breast","samplesBT474_Breast", "samplesCACO2_Colon", "samplesCalu1_Lung","samplesCalu6_Lung", "samplesChaGo_K_1_Lung", "samplesCOR_L23_Lung", "samplesCOR_L88_Lung", "samplesFaDu_Pharynx", "samplesHCT15_Colon",
-                      "samplesKYSE_30_Esophagus", "samplesMCF7_Breast", "samplesMDAMB231_Breast", "samplesMDAMB415_Breast", "samplesMDAMB436_Breast",
-                      "samplesMiaPaca_Pancreas", "samplesMiaPaCa_Pancreas", "samplesPC3_Prostate", "samplesSiHa_Cervix_Uteri", "samplesSKMEL2_Melanoma",
-                      "samplesSNB19_Glioblastoma","samplesSW1088_Glioblastoma", "samplesSW1783_Glioblastoma", "samplesSW480_Colon", "samplesSW_620_Colon",
-                      "samplesT47D_Breast", "samplesU251_Glioblastoma")
-################################################################################################
+colnames(design) <- levels(samples)
 
-library(limma)
+# Fit linear model using Limma
 fit <- lmFit(exprs(celfiles.frma.combateset), design)
-plotMA(fit)
+fit <- eBayes(fit)
 
-# Computes empirical Bayes statistics for differential expression. This moderated t-statistics uses standard deviations 
-# that have been shrunk towards a pooled standard deviation value.
-qqt(fit$t,df=fit$df.prior+fit$df.residual,pch=16,cex=0.2); abline(0,1)
-plotMA(fit); ord <- order(fit$lods, decreasing=TRUE); top30 <- ord[1:30]; text(fit$Amean[top30], fit$coef[top30], labels=fit$genes[top30, "Name"], cex=0.8, col="blue")
-contrast.matrix <- makeContrasts (SamplesA172_Glioblastoma_samplesSW480_Colon= samplesA172_Glioblastoma - samplesSW480_Colon, samplesA375_Melanoma_samplesSW480_Colon=samplesA375_Melanoma - samplesSW480_Colon, samplesBT20_Breast_samplesSW480_Colon= samplesBT20_Breast - samplesSW480_Colon, samplesBT20_Breast_samplesSW480_Colon= samplesBT20_Breast - samplesSW480_Colon,samplesBT474_Breast_samplesSW480_Colon= samplesBT474_Breast - samplesSW480_Colon, samplesCACO2_Colon_samplesSW480_Colon= samplesCACO2_Colon - samplesSW480_Colon,samplesCalu1_Lung_samplesSW480_Colon= samplesCalu1_Lung - samplesSW480_Colon, samplesCalu6_Lung_samplesSW480_Colon= samplesCalu6_Lung - samplesSW480_Colon, samplesChaGo_K_1_Lung_samplesSW480_Colon= samplesChaGo_K_1_Lung - samplesSW480_Colon, samplesCOR_L23_Lung_samplesSW480_Colon= samplesCOR_L23_Lung - samplesSW480_Colon, samplesCOR_L88_Lung_samplesSW480_Colon= samplesCOR_L88_Lung - samplesSW480_Colon, samplesFaDu_Pharynx_samplesSW480_Colon= samplesFaDu_Pharynx - samplesSW480_Colon,samplesHCT15_Colon_samplesSW480_Colon= samplesHCT15_Colon - samplesSW480_Colon,samplesKYSE_30_Esophagus_samplesSW480_Colon= samplesKYSE_30_Esophagus - samplesSW480_Colon,samplesKYSE_30_Esophagus_samplesSW480_Colon= samplesKYSE_30_Esophagus - samplesSW480_Colon, samplesMCF7_Breast_samplesSW480_Colon= samplesMCF7_Breast - samplesSW480_Colon, samplesMDAMB231_Breast_samplesSW480_Colon= samplesMDAMB231_Breast - samplesSW480_Colon,samplesMDAMB415_Breast_samplesSW480_Colon= samplesMDAMB415_Breast - samplesSW480_Colon, samplesMDAMB436_Breast_samplesSW480_Colon= samplesMDAMB436_Breast - samplesSW480_Colon,  samplesMiaPaca_Pancreas_samplesSW480_Colon= samplesMiaPaca_Pancreas - samplesSW480_Colon, samplesPC3_Prostate_samplesSW480_Colon= samplesPC3_Prostate - samplesSW480_Colon, samplesSiHa_Cervix_Uteri_samplesSW480_Colon= samplesSiHa_Cervix_Uteri - samplesSW480_Colon,samplesSKMEL2_Melanoma_samplesSW480_Colon= samplesSKMEL2_Melanoma - samplesSW480_Colon,samplesSNB19_Glioblastoma_samplesSW480_Colon= samplesSNB19_Glioblastoma - samplesSW480_Colon, samplesSNB19_Glioblastoma_samplesSW480_Colon= samplesSNB19_Glioblastoma - samplesSW480_Colon, samplesSW1783_Glioblastoma_samplesSW480_Colon= samplesSW1783_Glioblastoma - samplesSW480_Colon, samplesSW1783_Glioblastoma_samplesSW480_Colon= samplesSW1783_Glioblastoma - samplesSW480_Colon, samplesSW_620_Colon_samplesSW480_Colon= samplesSW_620_Colon - samplesSW480_Colon, samplesT47D_Breast_samplesSW480_Colon= samplesT47D_Breast - samplesSW480_Colon, samplesU251_Glioblastoma_samplesSW480_Colon= samplesU251_Glioblastoma - samplesSW480_Colon, levels=design)
-cellline_fits <- contrasts.fit(fit, contrast.matrix)
-cellline_ebayes <- eBayes(cellline_fits)
+# Contrast analysis
+contrast.matrix <- makeContrasts(samplesA172_Glioblastoma - samplesSW480_Colon, levels=design)
+fit.contrast <- contrasts.fit(fit, contrast.matrix)
+fit.contrast <- eBayes(fit.contrast)
 
+# Generate list of differentially expressed genes
+top_genes <- topTable(fit.contrast, coef=1, number=40000, lfc=2.0, p.value=0.01, adjust.method="fdr")
 
+# Save results
+write.table(top_genes, "top_genes.txt", sep="\t", quote=FALSE)
 
-# Get a list for probesets with a four fold change or more
+##########################
+# WGCNA: Co-expression network analysis
 
-### A172_Glioblastoma vs samplesSW480
-probeset.list <- topTable(cellline_ebFit, coef=1, number=40000, lfc=2.0, p.value = 0.01, adjust.method="fdr")
-length(rownames(probeset.list))
-probeset.list <- topTable(cellline_ebFit, coef=2, number=40000, lfc=2.0, p.value = 0.01, adjust.method="fdr")
-length(rownames(probeset.list))
-probeset.list <- topTable(cellline_ebFit, coef=3, number=40000, lfc=2.0, p.value = 0.01, adjust.method="fdr", sort.by="B")
-#write.table(topTable(cellline_ebFit, coef=1, adjust="fdr", sort.by="B", number=50000), file="limma_complete.xls", row.names=F, sep="\t") 
-results <- decideTests(cellline_ebFit, p.value=0.01, adjust="fdr",lfc=2, method="separate"); 
-vennDiagram(results) 
-
-vennDiagram(results[,c(1,2,3,4)],include=c("up","down"),counts.col=c("red","green"))
-vennCounts(results[,c(1,2,3,4)])
-#https://support.bioconductor.org/p/37877/
-#http://bioinfogp.cnb.csic.es/tools/venny/
-# Creates venn diagram of all changed genes with p-value equal or less than 0.05.
-x <- topTable(cellline_ebFit, coef=1, adjust="fdr", sort.by="P", number=50000); y <- x[x$adj.P.Val < 0.01,]; y; print("Number of genes in this list:"); length(y$ID) 
-
-# Filters out candidates that have P-values < 0.05 in each group ('coef=1') and provides the number of candidates for each 
-# list. These numbers should be identical with the sum of the values in each circle of the above venn diagram.
-x <- topTable(cellline_ebFit, coef=1, adjust="fdr", sort.by="P", number=50000); y <- x[x$adj.P.Val < 0.01 & (x$logFC > 2 | x$logFC < -2) & x$AveExpr > 10,]; 
-rownames(y); print("Number of genes in this list:"); length(rownames(y))
-
-##y; print("Number of genes in this list:"); length(y$ID) 
-
-# Same as above but with complex filter: P-value < 0.01 AND at least 2-fold change AND expression value A > 10.
-results <- decideTests(cellline_ebFit, p.value=0.05);
-heatDiagram(results, cellline_ebFit$coef, primary=1) 
-results[results[,1]==1,]
-# This function plots heat diagram gene expression profiles for genes which are significantly differentially expressed in the 
-# primary condition (this is not a cluster analysis heat map). Genes are sorted by differential expression under the primary 
-# condition. The argument 'primary=1' selects the first contrast column in the 'results' matrix as primary condition. The plotted 
-# genes can be extracted like this 'results[results[,1]==1,]'. More information on this function can be found in the limma manual.
-
-###http://manuals.bioinformatics.ucr.edu/home/R_BioCondManual#TOC-K-Means-PAM-
-biocLite ("GO.db")
-library("GO.db")
-library(hgu133plus2.db)
-library(hgu133a.db)
-library(annotate) # Loads the required libraries.
-goann <- as.list(GOTERM) # Retrieves full set of GO annotations.
-zz <- eapply(GOTERM, function(x) x@Ontology); table(unlist(zz)) # Calculates the number of annotations for each ontology category.
-?GOTERM # To find out, how to access the different GO components.
-GOTERM$"GO:0003700"; GOMFPARENTS$"GO:0003700"; GOMFCHILDREN$"GO:0003700" 
-# Shows how to print out the GO annotations for one entry and how to retrieve its direct parents and children.
-GOMFANCESTOR$"GO:0003700"; GOMFOFFSPRING$"GO:0003700" # Prints out complete lineages of parents and children for a GO ID.
-goterms <- unlist(eapply(GOTERM, function(x) x@Term)); goterms[grep("molecular_function", goterms)] 
-# Retrieves all GO terms and prints out only those matching a search string given in the grep function. The same can 
-# be done for the definition field with 'x@Definition'. A set of GO IDs can be provided as well: goterms[GOMFANCESTOR$"GO:0005507"]
-go_df <- data.frame(GOID=unlist(eapply(GOTERM, function(x) x@GOID)), Term=unlist(eapply(GOTERM, function(x) x@Term)), Ont=unlist(eapply(GOTERM, function(x) x@Ontology))) 
-# Generates data frame of the commonly used GO components: GOID, GO Term and Ontology Type.
-affyGO <- eapply(hgu133plus2, getOntology, "MF"); table(sapply(affyGO, length)) 
-# Retrieves MF GO terms for all probe IDs of a chosen Affy chip and calculates how many probes have multiple GO terms 
-# associated. Use "BP" and "CC" arguments to retrieve BP/CC GO terms.
-affyGOdf <- data.frame(unlist(affyGO)); affyGOdf <- data.frame(AffyID=row.names(affyGOdf), GOID=affyGOdf[,1]); affyGOdf <- merge(affyGOdf, go_df, by.x="GOID", by.y="GOID", all.x=T) 
-# Converts above MF list object into a data frame. The AffyID occurence counts are appended to AffyIDs. The last step 
-# merges the two data frames: 'affyGOdf' and 'go_df'.
-unique(lookUp("GO:0004713", "ath1121501", "GO2ALLPROBES")) # Retrieves all Affy IDs that are associated with a GO node.
-z <- affyGO[c("254759_at", "260744_at")]; as.list(GOTERM)[z[[1]]] 
-# Retrieves GO IDs for set of Affy IDs and then the corresponding GO term for first Affy ID.
-a <- data.frame(unlist(z)); a <- data.frame(ID=row.names(a), a); b <- data.frame(goterms[as.vector(unlist(z))]); b <- data.frame(ID=row.names(b), b); merge(b, a, by.x = "ID", by.y="unlist.z.") 
-# Merges Affy ID, GO ID and GO annotation information.
-affyEv <- eapply(ath1121501GO, getEvidence); table(unlist(affyEv, use.names = FALSE)) 
-# Provides evidence code information for each gene and summarizes the result.
-test1 <- eapply(ath1121501GO, dropECode, c("IEA", "NR")); table(unlist(sapply(test1, getEvidence), use.names = FALSE)) 
-# This example shows how one can remove certain evidence codes (e.g. IEA, IEP) from the analysis.
-
-
-######################################################
-##The par command sets "nice" graphical defaults
-
-par(mar=c(3,3,2,1), mgp=c(2,.7,0), tck=-.01)
-plot(probeset.list$logFC, -log10(probeset.list$P.Value), xlim=c(-10, 10), ylim=c(0, 15), #Set limit
-     xlab="log2 fold change", ylab="-log10 p-value")#Set axis labels
-##number of genes that have an absolute fold change greater than 2 and a p-value less than 0.001 can be found using the command
-sum(abs(probeset.list$logFC) > 2 & probeset.list$P.Value < 0.001)
-
-
-###########################################
-##############################
-#results<-decideTests(result_ebFit, method="separate", adjust.method="fdr", p.value=0.05)  
-
-#c1.V <-results[,1] coluna dos IDS
-#c2.V <-results[,2] coluna dos IDS
-#c3.V <-results[,3] coluna dos IDS
-#c4.V <-results[,4] coluna dos IDS
-#c5.V <-results[,5] coluna dos IDS
-#VennT<-cbind(c1.V, c2.V, c3.V, c4.V,c5.V) concatenar em uma unica tabela
-#VennTable<-vennCounts(VennT)
-
-#Pegar genes presentes em uma ou outra tabela.
-# All<-results[,1]!=0 || results[,2]!=0 || results[,3]!=0 || results[,4]!=0 || results[,5]!=0
-
-# All
-# allgene<-result_ebFit$genes[All, "ID"]
-# a<-na.omit(allgene)
-# write.table(a, file="Listagenesumaoutra.xls", sep="\t")
-
-
-#All<-results[,1]!=0 & results[,2]!=0 & results[,3]!=0 & results[,4]!=0
-
-#allgene<-fit2$genes[All, "GeneName"]
-
-#a<-na.omit(allgene)
-#########################
-
-
-
-#biocLite("hgu133plus2.db")
-library(hgu133plus2.db)
-library(annotate)
-gene.symbols <- getSYMBOL(rownames(probeset.list), "hgu133plus2")
-results <- cbind(probeset.list, gene.symbols)
-df1 <- data.frame(results)
-
-head(results,n = 200L)
-write.table(results, "results.txt", sep="\t", quote=FALSE)
-
-
-################################ Pegar o nome do gene de todas as sondas
-
-library(hgu133plus2.db)
-library(hgu133a.db)
-gene.symbols_normfrmacombat_cel <- getSYMBOL(rownames(edata), "hgu133plus2.db")
-
-### Resultados normalizados
-results <- cbind(edata, gene.symbols_normfrmacombat_cel)
-results <- data.frame(results[,82], results[,1:81])
-
-#write.csv(results,"annotation_2_resultadonormalizadormacombat.csv")
-
-install.packages("ggplot2")
-
-
-
-##################################
-############################# WGCNA ###########################
-
-results_cel_file_combat_rma <- data.frame(results[,82],results[,2:81])
-write.csv(results_cel_file_combat_rma, ""
-source("http://faculty.ucr.edu/~tgirke/Documents/R_BioCond/My_R_Scripts/my.colorFct.R") 
-mydatascale <- t(scale(t(results_cel_file_combat_rma))) 
-#########################################################################
-
-
+# Set working directory for WGCNA
 setwd("/home/mattoslmp/datasets_arrays/SampleNetworkFiles")
-library(WGCNA)
-options(stringsAsFactors = FALSE);
-#Read in the female liver data set
-#femData = read.csv("LiverFemale3600.csv");
-# Take a quick look at what is in the data set:
-dim(Data);
 
+# Load processed data from ComBat
+data <- celfiles.frma.combat
+datExpr0 <- t(data)  # Transpose to put genes in columns and samples in rows
 
-workingDir = ".";
-setwd(workingDir); 
-# Load the WGCNA package
-library(WGCNA);
-# The following setting is important, do not omit.
-options(stringsAsFactors = FALSE);
-#Read in the female liver data set
-Data <- read.delim("~/datasets_arrays/SampleNetworkFiles/fmra_combat_annot2fin.txt")
-# Take a quick look at what is in the data set:
-Data <-fmra_combat_annot2fin
+# Select optimal power for network construction
+powers <- c(1:10, seq(from=12, to=20, by=2))
+sft <- pickSoftThreshold(datExpr0, powerVector=powers, verbose=5)
 
-datExpr0 = data.frame(t(Data[,]))
-datExpr0
+# Plot results of power selection
+par(mfrow=c(1,2))
+plot(sft$fitIndices[,1], -sign(sft$fitIndices[,3]) * sft$fitIndices[,2],
+     xlab="Soft Threshold (power)", ylab="Scale Free Topology Model Fit, signed R^2", type="n",
+     main="Scale Independence")
+text(sft$fitIndices[,1], -sign(sft$fitIndices[,3]) * sft$fitIndices[,2],
+     labels=powers, cex=0.9, col="red")
+abline(h=0.90, col="red")
 
-##rownames(datExpr1) = names(femData)[-c(1:8)];
-rownames(datExpr0)= names(Data)
-  
-colnames(datExpr0) <- NULL
-names (datExpr0) <- NULL
-powers = c(c(1:10), seq(from = 12, to=20, by=2))
-
-sft = pickSoftThreshold(datExpr0, powerVector = powers, verbose = 5)
-sizeGrWindow(9, 5)
-ar(mfrow = c(1,2));
-
-
-cex1 = 0.9;
-
-plot(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
-     xlab="Soft Threshold (power)",ylab="Scale Free Topology Model Fit,signed R^2",type="n",
-     main = paste("Scale independence"));
-text(sft$fitIndices[,1], -sign(sft$fitIndices[,3])*sft$fitIndices[,2],
-     labels=powers,cex=cex1,col="red");
-abline(h=0.90,col="red")
-# Mean connectivity as a function of the soft-thresholding power
+# Plot mean connectivity
 plot(sft$fitIndices[,1], sft$fitIndices[,5],
-     xlab="Soft Threshold (power)",ylab="Mean Connectivity", type="n",
-     main = paste("Mean connectivity"))
-text(sft$fitIndices[,1], sft$fitIndices[,5], labels=powers, cex=cex1,col="red")
+     xlab="Soft Threshold (power)", ylab="Mean Connectivity", type="n",
+     main="Mean Connectivity")
+text(sft$fitIndices[,1], sft$fitIndices[,5], labels=powers, cex=0.9, col="red")
+
+# Build WGCNA network using the selected power
+power <- sft$powerEstimate
+net <- blockwiseModules(datExpr0, power=power, TOMType="unsigned", minModuleSize=30, reassignThreshold=0, mergeCutHeight=0.25, numericLabels=TRUE, pamRespectsDendro=FALSE, verbose=3)
+
+# Display identified modules
+table(net$colors)
+
+# Plot gene dendrogram and module colors
+plotDendroAndColors(net$dendrograms[[1]], net$colors, "Dynamic Tree Cut",
+                    dendroLabels=FALSE, hang=0.03,
+                    addGuide=TRUE, guideHang=0.05, main="Gene Dendrogram and Module Colors")
+
+# Extract modules and calculate correlation with experimental conditions
+moduleEigengenes <- net$MEs
+MEs <- moduleEigengenes(datExpr0, net$colors)
+correlations <- cor(MEs, condition, use="p")
+
+# Plot correlations between modules and condition
+library(pheatmap)
+pheatmap(correlations, cluster_rows=TRUE, cluster_cols=TRUE, display_numbers=TRUE, main="Module-Condition Correlation")
+
+# Save WGCNA results
+save(MEs, file="moduleEigengenes.RData")
+save(net, file="network.RData")
