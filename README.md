@@ -30,13 +30,8 @@ Co-expression Network Analysis (WGCNA):
 
 ## Various plots (e.g., dendrograms, heatmaps, histograms, and boxplots) are generated throughout the analysis to provide visual insights into the data at each stage of processing.
 
+## More details: 
 
-## Cancer-transcriptomics
-## Array Data Analysis
-
-This repository contains scripts for analyzing array data using various R packages and Bioconductor tools. The analysis includes preprocessing steps such as background correction, normalization, batch effect removal, and differential expression analysis.
-
-## Getting Started
 ## Installation:
 To run the analysis, you need to install the following Bioconductor packages: frma, affy, cluster, impute, preprocessCore, WGCNA, GEOquery, simpleaffy, RColorBrewer, devtools, ggfortify, ggplot2, sva, limma, and hgu133plus2.db. You can install these packages using the following command:
 
